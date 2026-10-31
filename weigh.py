@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""What one memecoin buy on pump.fun actually weighs.
+"""How much account data one pump.fun buy loads, and what the default limit costs you.
+
+This is loadedAccountsDataSize - the bytes a validator loads to execute your
+transaction. It is NOT network traffic: the transaction on the wire is ~1.3 KB.
+
+It still costs you. The scheduler prices loaded data before execution, and leaving
+the default 64 MiB allowance adds 16,384 CU to your cost estimate, which lowers your
+scheduling priority for nothing. Setting the limit to what you actually load is a
+5-byte instruction.
 
 Live read from Solana mainnet. No wallet, no keys, nothing signed:
     python3 weigh.py
@@ -62,13 +70,19 @@ def account_size(addr):
     return len(raw), ms, None
 
 
+def cu_for(nbytes):
+    """Solana cost model: 8 CU per 32 KiB of loaded data, rounded up."""
+    import math
+    return math.ceil(nbytes / 32768) * 8
+
+
 def line(s=""):
     print(s, flush=True)
 
 
 def main():
     line()
-    line(f"{C['b']}{C['w']}  WHAT ONE MEMECOIN BUY ACTUALLY WEIGHS{C['x']}")
+    line(f"{C['b']}{C['w']}  ACCOUNT DATA LOADED BY ONE MEMECOIN BUY{C['x']}")
     line(f"{C['d']}  live query to solana mainnet · no wallet, no keys, nothing signed{C['x']}")
     line(f"{C['d']}  {RPC}{C['x']}")
     line()
@@ -96,11 +110,25 @@ def main():
     time.sleep(1.0)
 
     line()
-    line(f"  {C['b']}{C['y']}{total:>12,} BYTES{C['x']}  {C['w']}move through the network for ONE tap of \"buy\"{C['x']}")
-    line(f"  {C['d']}{'':>12}  {total/1048576:.2f} MB · every buy · every person · every time{C['x']}")
+    line(f"  {C['b']}{C['y']}{total:>12,} BYTES{C['x']}  {C['w']}of account data loaded to run ONE buy{C['x']}")
+    line(f"  {C['d']}{'':>12}  {total/1048576:.2f} MB · loadedAccountsDataSize, NOT network traffic{C['x']}")
+    line(f"  {C['d']}{'':>12}  the transaction on the wire is ~1.3 KB{C['x']}")
+    line()
+    time.sleep(0.8)
+
+    default_cu = cu_for(64 * 1024 * 1024)
+    actual_cu = cu_for(total)
+    line(f"  {C['w']}  what the default costs you{C['x']}")
+    line(f"  {C['d']}  the scheduler prices loaded data before execution: 8 CU per 32 KiB started{C['x']}")
+    line()
+    line(f"  {C['r']}{default_cu:>12,} CU{C['x']}  {C['d']}if you leave the default 64 MiB allowance{C['x']}")
+    line(f"  {C['g']}{actual_cu:>12,} CU{C['x']}  {C['d']}if you set the limit to what you actually load{C['x']}")
+    line(f"  {C['b']}{C['y']}{default_cu - actual_cu:>12,} CU{C['x']}  {C['w']}you are paying for nothing, straight off your priority{C['x']}")
+    line()
+    line(f"  {C['d']}  the fix is one instruction, 5 bytes: SetLoadedAccountsDataSizeLimit{C['x']}")
     line()
     share = ACCOUNT_CEILING / total * 100
-    line(f"  {C['d']}  {share:.0f}% of that is one program sitting flat against the wall.{C['x']}")
+    line(f"  {C['d']}  {share:.0f}% of the {total/1048576:.1f} MB is one program flat against the 10 MiB account ceiling.{C['x']}")
     line()
 
 

@@ -62,7 +62,7 @@ python3 leader_radar.py --minutes 10     # look further ahead
 python3 leader_radar.py --stats          # how this epoch splits by client
 python3 leader_radar.py --json           # machine readable
 python3 leader_radar.py --rpc <your-url> # your own endpoint
-python3 weigh.py                         # what one buy weighs
+python3 weigh.py                         # account data one buy loads + what the default costs
 ```
 
 `--stats` is the one worth running first:
@@ -84,7 +84,7 @@ Those are also the odds that your next trade lands on each kind of machine.
 
 ## Also in here: `weigh.py`
 
-What one tap of "buy" on pump.fun actually drags through the network.
+How much **account data** one pump.fun buy loads, and what the default limit costs you.
 
 ```bash
 python3 weigh.py
@@ -92,20 +92,28 @@ python3 weigh.py
 
 ```
   10,485,760  pump.fun program            3572 ms
-              ^ that is the hard ceiling for a solana account.
-                this program cannot grow by a single byte.
    1,382,061  Token-2022 program          1725 ms
      948,989  pump.fun fee program        1524 ms
      108,645  Token program               1261 ms
      105,032  associated token program     703 ms
        1,856  29 more accounts x 64 B of header
 
-  13,032,343 BYTES  move through the network for ONE tap of "buy"
+  13,032,343 BYTES  of account data loaded to run ONE buy
+                    loadedAccountsDataSize, NOT network traffic
+                    the transaction on the wire is ~1.3 KB
+
+      16,384 CU  if you leave the default 64 MiB allowance
+       3,184 CU  if you set the limit to what you actually load
+      13,200 CU  you are paying for nothing, straight off your priority
 ```
 
-Same rules: reads public accounts, signs nothing, needs no wallet.
+**To be precise about what this number is.** It is `loadedAccountsDataSize` - the bytes a validator loads to execute the transaction. It is not bandwidth, and the programs are not shipped over the network per buy. Thanks to [@0xeddiekim](https://x.com/0xeddiekim) for pushing me to say that properly.
 
-The 10,485,760 is not a round coincidence. It is the maximum size a Solana account can be. The program the entire memecoin market runs on is flat against that wall.
+It still costs you, which is the point of measuring it. The scheduler prices loaded data **before** execution, at 8 CU per 32 KiB started. Leave the default 64 MiB allowance and you carry 16,384 CU you never use - that inflates your cost estimate and drops your scheduling priority for nothing.
+
+The fix is one instruction, five bytes: `SetLoadedAccountsDataSizeLimit`. Anza documents the same effect [here](https://www.anza.xyz/blog/cu-optimization-with-setloadedaccountsdatasizelimit).
+
+The 10,485,760 is not a round coincidence either. It is the maximum size a Solana account can be, and the program the entire memecoin market runs on is flat against that wall.
 
 ---
 
