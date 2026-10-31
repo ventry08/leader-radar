@@ -62,6 +62,7 @@ python3 leader_radar.py --minutes 10     # look further ahead
 python3 leader_radar.py --stats          # how this epoch splits by client
 python3 leader_radar.py --json           # machine readable
 python3 leader_radar.py --rpc <your-url> # your own endpoint
+python3 weigh.py                         # what one buy weighs
 ```
 
 `--stats` is the one worth running first:
@@ -78,6 +79,33 @@ python3 leader_radar.py --rpc <your-url> # your own endpoint
 ```
 
 Those are also the odds that your next trade lands on each kind of machine.
+
+---
+
+## Also in here: `weigh.py`
+
+What one tap of "buy" on pump.fun actually drags through the network.
+
+```bash
+python3 weigh.py
+```
+
+```
+  10,485,760  pump.fun program            3572 ms
+              ^ that is the hard ceiling for a solana account.
+                this program cannot grow by a single byte.
+   1,382,061  Token-2022 program          1725 ms
+     948,989  pump.fun fee program        1524 ms
+     108,645  Token program               1261 ms
+     105,032  associated token program     703 ms
+       1,856  29 more accounts x 64 B of header
+
+  13,032,343 BYTES  move through the network for ONE tap of "buy"
+```
+
+Same rules: reads public accounts, signs nothing, needs no wallet.
+
+The 10,485,760 is not a round coincidence. It is the maximum size a Solana account can be. The program the entire memecoin market runs on is flat against that wall.
 
 ---
 
